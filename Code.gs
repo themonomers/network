@@ -9,8 +9,10 @@ function ingestLog() {
   var time;
   var inputs = [];
   var open_row = findOpenRow(ROUTER_LOG_SPREADSHEET_ID, 'data','A:A');
+  var first_open_row = open_row;
 
   for (var i = data.length; i >= 0; i--) {
+//    Logger.log(i + '. ' + data[i]);
     type = new String(data[i]).split(']', 1)[0].substring(1);
     if (type.indexOf('Attack') > 0) {
       source = new String(data[i]).split('from source: ')[1].split(',')[0];
@@ -37,16 +39,16 @@ function ingestLog() {
   // batch write data to sheet
   Sheets.Spreadsheets.Values.batchUpdate({valueInputOption: 'USER_ENTERED', data: inputs}, ROUTER_LOG_SPREADSHEET_ID);
 
-  // copy efficiency formulas down
+  // copy formulas down
   SpreadsheetApp.openById(
     ROUTER_LOG_SPREADSHEET_ID
   ).getRange(
-    'data!E2:F2'
+    'data!E2:G2'
   ).copyTo(
     SpreadsheetApp.openById(
       ROUTER_LOG_SPREADSHEET_ID
     ).getRange(
-      'data!E' + (open_row - data.length) + ':F' + (open_row - 1)
+      'data!E' + (first_open_row) + ':G' + (open_row - 1)
     )
   );
 }
