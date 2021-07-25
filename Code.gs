@@ -1,18 +1,23 @@
-ROUTER_LOG_SPREADSHEET_ID = 'abc123';
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  // Or DocumentApp or FormApp.
+  ui.createMenu('Custom Menu')
+    .addItem('Ingest Log', 'ingestLog')
+    .addToUi();
+}
 
 function ingestLog() {
-  var data = Sheets.Spreadsheets.Values.get(ROUTER_LOG_SPREADSHEET_ID, 'raw!A:A').values;
+  var data = SpreadsheetApp.getActiveSpreadsheet().getRange('raw!A:A').getValues();
 
   var type;
   var source;
   var port;
   var time;
   var inputs = [];
-  var open_row = findOpenRow(ROUTER_LOG_SPREADSHEET_ID, 'data','A:A');
+  var open_row = findOpenRow('data');
   var first_open_row = open_row;
 
   for (var i = data.length; i >= 0; i--) {
-//    Logger.log(i + '. ' + data[i]);
     type = new String(data[i]).split(']', 1)[0].substring(1);
     if (type.indexOf('Attack') > 0) {
       source = new String(data[i]).split('from source: ')[1].split(',')[0];
@@ -25,36 +30,27 @@ function ingestLog() {
         time = new Date(new String(data[i]).split(',')[2] + ', ' + new String(data[i]).split(',')[3] + ' -0700');
       }
 
-      Logger.log('type: ' + type + ' | source: ' + source + ' | port: ' + port + ' | time: ' + time);
- 
-      inputs.push({range: 'data!A' + open_row, values: [[time.toLocaleDateString()]]});
-      inputs.push({range: 'data!B' + open_row, values: [[source]]});
-      inputs.push({range: 'data!C' + open_row, values: [[port]]});
-      inputs.push({range: 'data!D' + open_row, values: [[type]]});
+      inputs.push([time.toLocaleDateString(), source, port, type]);
 
       open_row++;
     }
   }
 
   // batch write data to sheet
-  Sheets.Spreadsheets.Values.batchUpdate({valueInputOption: 'USER_ENTERED', data: inputs}, ROUTER_LOG_SPREADSHEET_ID);
+  SpreadsheetApp.getActiveSpreadsheet().getRange('data!A' + first_open_row + ':D' + (open_row - 1)).setValues(inputs);
 
-  // copy formulas down
-  SpreadsheetApp.openById(
-    ROUTER_LOG_SPREADSHEET_ID
-  ).getRange(
+  // copy formulas for 2 octet, 3 octet, and whois hyperlink down
+  SpreadsheetApp.getActiveSpreadsheet().getRange(
     'data!E2:G2'
   ).copyTo(
-    SpreadsheetApp.openById(
-      ROUTER_LOG_SPREADSHEET_ID
-    ).getRange(
+    SpreadsheetApp.getActiveSpreadsheet().getRange(
       'data!E' + (first_open_row) + ':G' + (open_row - 1)
     )
   );
 }
 
-function findOpenRow(sheetId, sheetName, range) {
-  var values = Sheets.Spreadsheets.Values.get(sheetId, sheetName + '!' + range).values;
+function findOpenRow(sheetName) {
+  var values = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName).getDataRange().getValues();
   if (!values) {
     return 1;
   }
